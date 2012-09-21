@@ -7,12 +7,32 @@
     :copyright: (c) 2012 by Openlabs Technologies & Consulting (P) Limited
     :license: GPLv3, see LICENSE for more details.
 """
+import logging
 from nereid import (request, abort, render_template, login_required, url_for,
     redirect, flash, jsonify, permissions_required)
 from nereid.contrib.pagination import Pagination
 from trytond.model import ModelView, ModelSQL, ModelSingleton, Workflow, fields
 from trytond.pool import Pool
 from trytond.pyson import Eval
+
+geoip = None
+try:
+    from pygeoip import GeoIP
+except ImportError:
+    logging.error("pygeoip is not installed")
+else:
+    try:
+        # Usual location in Ubuntu
+        geoip = GeoIP('/usr/share/GeoIP/GeoIP.dat')
+    except IOError:
+        try:
+            # this is where brew installs it
+            geoip = GeoIP(
+                '/usr/local/Cellar/geoip/1.4.8/share/GeoIP/GeoIP.dat'
+            )
+        except IOError:
+            pass
+
 
 
 class Configuration(ModelSingleton, ModelSQL, ModelView):
@@ -47,17 +67,27 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
             party_obj = Pool().get('party.party')
             config_obj = Pool().get('sale.configuration')
             company_obj = Pool().get('company.company')
+            country_obj = Pool().get('country.country')
 
             config = config_obj.browse(1)
 
             # Create Party
             company = request.nereid_website.company.id
+
+            country_ids = False
+            if not contact_form.get('country', None) and geoip:
+                country_code = geoip.country_code_by_addr(request.remote_addr)
+                if country_code:
+                    country_ids = country_obj.search(
+                        [('code', '=', country_code)], limit=1
+                    )
             party_id = party_obj.create({
                 'name': contact_form.get('company') or \
                     contact_form['name'],
                 'addresses': [
                     ('create', {
                         'name': contact_form['name'],
+                        'country': country_ids[0],
                         })],
                 })
             party = party_obj.browse(party_id)
@@ -97,6 +127,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
                     'address': party.addresses[0].id,
                     'description': 'New lead from website',
                     'comment': contact_form['comment'],
+                    'ip_address': request.remote_addr
                 })
 
             flash('Thank you for contacting us. We will revert soon.')
