@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <tryton>
     <data>
+        <record id="crm_home" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales</field>
+            <field name="endpoint">sale.opportunity.sales_home</field>
+            <field name="sequence" eval="100" />
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
         <record id="new_sale_opportunity" model="nereid.url_rule">
             <field name="rule">/&lt;language&gt;/sales/opportunity/-new</field>
             <field name="endpoint">sale.opportunity.new_opportunity</field>
@@ -14,6 +20,32 @@
             <field name="sequence" eval="300" />
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
+        <record id="all_leads" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/leads</field>
+            <field name="endpoint">sale.opportunity.all_leads</field>
+            <field name="sequence" eval="300" />
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+        <record id="all_leads_page" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/leads/&lt;int:page&gt;</field>
+            <field name="endpoint">sale.opportunity.all_leads</field>
+            <field name="sequence" eval="300" />
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+        <record id="admin_application" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/lead/&lt;int:id&gt;</field>
+            <field name="endpoint">sale.opportunity.admin_lead</field>
+            <field name="sequence" eval="100" />
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+        <record id="add_lead_review" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/lead`/add-review</field>
+            <field name="endpoint">sale.opportunity.add_review</field>
+            <field name="sequence" eval="100" />
+            <field name="methods">("POST",)</field>
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+
     </data>
 </tryton>
 

@@ -3,6 +3,12 @@
 this repository contains the full copyright notices and license terms. -->
 <tryton>
     <data>
+
+      <record id="permission_sales_admin" model="nereid.permission">
+          <field name="name">Sales Admin</field>
+          <field name="value">sales.admin</field>
+        </record>
+        
         <record model="ir.ui.view" id="company_view_form">
             <field name="model">company.company</field>
             <field name="type">form</field>
