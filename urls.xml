@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tryton>
+    <data>
+        <record id="new_sale_opportunity" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/-new</field>
+            <field name="endpoint">sale.opportunity.new_opportunity</field>
+            <field name="sequence" eval="300" />
+            <field name="methods">("GET", "POST")</field>
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+        <record id="new_sale_opportunity_success" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/-thanks</field>
+            <field name="endpoint">sale.opportunity.new_opportunity_thanks</field>
+            <field name="sequence" eval="300" />
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
+    </data>
+</tryton>
+

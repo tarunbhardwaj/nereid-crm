@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<!-- This file is part of Tryton.  The COPYRIGHT file at the top level of
+this repository contains the full copyright notices and license terms. -->
+<tryton>
+    <data>
+        <record model="ir.ui.view" id="company_view_form">
+            <field name="model">company.company</field>
+            <field name="type">form</field>
+            <field name="inherit" ref="company.company_view_form"/>
+            <field name="arch" type="xml">
+                <![CDATA[
+                    <data>
+                        <xpath
+                            expr="//field[@name=&quot;employees&quot;]"
+                            position="after">
+                            <field name="sales_team" colspan="2"/>
+                        </xpath>
+                    </data>
+                ]]>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="opportunity_view_form">
+            <field name="model">sale.opportunity</field>
+            <field name="type">form</field>
+            <field name="inherit" ref="sale_opportunity.opportunity_view_form"/>
+            <field name="arch" type="xml">
+                <![CDATA[
+                    <data>
+                        <xpath
+                            expr="//field[@name=&quot;description&quot;]"
+                            position="after">
+                            <label name="ip_address"/>
+                            <field name="ip_address"/>
+                        </xpath>
+                    </data>
+                ]]>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="sale_configuration_view_form">
+            <field name="model">sale.configuration</field>
+            <field name="type">form</field>
+            <field name="inherit" ref="sale.sale_configuration_view_form"/>
+            <field name="arch" type="xml">
+                <![CDATA[
+                    <data>
+                        <xpath
+                            expr="//field[@name=&quot;sale_shipment_method&quot;]"
+                            position="after">
+                            <label name="website_employee"/>
+                            <field name="website_employee"/>
+                        </xpath>
+                    </data>
+                ]]>
+            </field>
+        </record>
+
+    </data>
+</tryton>
