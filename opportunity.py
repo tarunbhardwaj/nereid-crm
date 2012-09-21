@@ -74,7 +74,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
             # Create Party
             company = request.nereid_website.company.id
 
-            country_ids = False
+            country_ids = [False]
             if not contact_form.get('country', None) and geoip:
                 country_code = geoip.country_code_by_addr(request.remote_addr)
                 if country_code:
