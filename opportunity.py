@@ -120,19 +120,20 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
                 {'email': contact_form['email']})
 
             # Create sale opportunity
-            self.create({
+            employee = request.nereid_user.employee.id \
+                if request.nereid_user.employee else config.website_employee.id
+            lead_id = self.create({
                     'party': party_id,
                     'company': company,
-                    'employee': config.website_employee.id,
+                    'employee': employee,
                     'address': party.addresses[0].id,
                     'description': 'New lead from website',
                     'comment': contact_form['comment'],
                     'ip_address': request.remote_addr
                 })
 
-            flash('Thank you for contacting us. We will revert soon.')
             return redirect(request.args.get('next',
-                url_for('nereid.website.home')))
+                url_for('sale.opportunity.admin_lead', id=lead_id)))
         return render_template('crm/sale_form.jinja')
 
     def new_opportunity_thanks(self):
