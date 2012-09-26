@@ -39,7 +39,7 @@
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="add_lead_review" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/lead`/add-review</field>
+            <field name="rule">/&lt;language&gt;/sales/opportunity/lead/add-review</field>
             <field name="endpoint">sale.opportunity.add_review</field>
             <field name="sequence" eval="100" />
             <field name="methods">("POST",)</field>
