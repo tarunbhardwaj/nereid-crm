@@ -150,6 +150,26 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
 
     @login_required
     @permissions_required(['sales.admin'])
+    def assign_lead(self, lead_id):
+        "Change the employee on lead"
+        lead = self.browse(lead_id)
+        nereid_user_obj = Pool().get('nereid.user')
+
+        new_assignee = nereid_user_obj.browse(int(request.form['user']))
+
+        if lead.employee.id == new_assignee.id:
+            flash("Lead already assigned to %s" % new_assignee.name)
+            return redirect(request.referrer)
+
+        self.write(lead.id, {
+            'employee': new_assignee.employee.id
+        })
+
+        flash("Lead assigned to %s" % new_assignee.name)
+        return redirect(request.referrer)
+
+    @login_required
+    @permissions_required(['sales.admin'])
     def all_leads(self, page=1):
         """
         All leads captured
@@ -189,9 +209,18 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         """
         Lead
         """
+        nereid_user_obj = Pool().get('nereid.user')
+
         lead = self.browse(id)
+        nereid_user_id = nereid_user_obj.search(
+            [('employee', '=', lead.employee.id)], limit=1
+        )
+        if nereid_user_id:
+            employee = nereid_user_obj.browse(nereid_user_id[0])
+        else:
+            employee = None
         return render_template(
-            'crm/admin-lead.jinja', lead=lead
+            'crm/admin-lead.jinja', lead=lead, employee=employee
         )
 
     @login_required
@@ -226,7 +255,7 @@ class Company(ModelSQL, ModelView):
     _name = 'company.company'
 
     sales_team = fields.Many2Many(
-        'company.company-company.employee', 'company', 'employee', 'Sales Team'
+        'company.company-nereid.user-sales', 'company', 'nereid_user', 'Sales Team'
     )
 
 Company()
@@ -234,19 +263,15 @@ Company()
 
 class CompanySalesTeam(ModelSQL):
     "Sales Team"
-    _name = 'company.company-company.employee'
-    _table = 'company_sales_team_rel'
+    _name = 'company.company-nereid.user-sales'
+    _table = 'company_nereid_sales_team_rel'
     _description = __doc__
 
     company = fields.Many2One('company.company', 'Company', ondelete='CASCADE',
         required=True, select=True
     )
-    employee = fields.Many2One('company.employee', 'Employee',
+    nereid_user = fields.Many2One('nereid.user', 'Nereid User',
         ondelete='CASCADE', required=True, select=True,
-        domain=[
-            ('company', '=', Eval('company')),
-        ],
-        depends=['company']
     )
 
 CompanySalesTeam()
