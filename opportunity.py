@@ -228,8 +228,8 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
 
     @login_required
     @permissions_required(['sales.admin'])
-    def add_review(self):
-        """Add a review for the lead
+    def add_comment(self):
+        """Add a comment for the lead
         """
         review_obj = Pool().get('nereid.review')
         lead_id = request.form.get('lead', type=int)
@@ -246,9 +246,9 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         if request.is_xhr:
             return jsonify({
                 'success': True,
-                'message': 'The review has been added.'
+                'message': 'The comment has been added.'
             })
-        return redirect(request.referrer + '#review')
+        return redirect(request.referrer + '#tab-comment')
 
     @login_required
     @permissions_required(['sales.admin'])
