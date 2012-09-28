@@ -146,7 +146,10 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         """
         Shows a home page for the sale opportunities
         """
-        return render_template('crm/home.jinja')
+        counter = {}
+        for state in ('lead', 'opportunity', 'converted', 'cancelled', 'lost'):
+            counter[state] = self.search([('state', '=', state)], count=True)
+        return render_template('crm/home.jinja', counter=counter)
 
     @login_required
     @permissions_required(['sales.admin'])
