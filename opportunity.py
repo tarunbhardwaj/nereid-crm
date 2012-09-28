@@ -250,6 +250,71 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
             })
         return redirect(request.referrer + '#review')
 
+    @login_required
+    @permissions_required(['sales.admin'])
+    def mark_opportunity(self, lead_id):
+        """Convert the lead to opportunity
+        """
+        self.opportunity([lead_id])
+        if request.is_xhr:
+            return jsonify({
+                'success': True,
+                'message': 'Good Work! This lead is an opportunity now.'
+            })
+        return redirect(request.referrer)
+
+    @login_required
+    @permissions_required(['sales.admin'])
+    def mark_lost(self, lead_id):
+        """Convert the lead to lost
+        """
+        self.lost([lead_id])
+        if request.is_xhr:
+            return jsonify({
+                'success': True,
+                'message': 'The lead is marked as lost.'
+            })
+        return redirect(request.referrer)
+
+    @login_required
+    @permissions_required(['sales.admin'])
+    def mark_lead(self, lead_id):
+        """Convert the opportunity to lead
+        """
+        self.lead([lead_id])
+        if request.is_xhr:
+            return jsonify({
+                'success': True,
+                'message': 'The lead is marked back to open.'
+            })
+        return redirect(request.referrer)
+
+    @login_required
+    @permissions_required(['sales.admin'])
+    def mark_converted(self, lead_id):
+        """Convert the opportunity
+        """
+        self.convert([lead_id])
+        if request.is_xhr:
+            return jsonify({
+                'success': True,
+                'message': 'Awesome! The Opportunity is converted.'
+            })
+        return redirect(request.referrer)
+
+    @login_required
+    @permissions_required(['sales.admin'])
+    def mark_cancelled(self, lead_id):
+        """Convert the lead as cancelled
+        """
+        self.cancel([lead_id])
+        if request.is_xhr:
+            return jsonify({
+                'success': True,
+                'message': 'The lead is cancelled.'
+            })
+        return redirect(request.referrer)
+
 SaleOpportunity()
 
 
@@ -258,7 +323,8 @@ class Company(ModelSQL, ModelView):
     _name = 'company.company'
 
     sales_team = fields.Many2Many(
-        'company.company-nereid.user-sales', 'company', 'nereid_user', 'Sales Team'
+        'company.company-nereid.user-sales',
+        'company', 'nereid_user', 'Sales Team'
     )
 
 Company()
