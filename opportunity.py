@@ -12,11 +12,13 @@ import logging
 from wtforms import Form, IntegerField, DecimalField, validators
 
 from nereid import (request, abort, render_template, login_required, url_for,
-    redirect, flash, jsonify, permissions_required)
+    redirect, flash, jsonify, permissions_required, render_email)
 from nereid.contrib.pagination import Pagination
 from trytond.model import ModelView, ModelSQL, ModelSingleton, Workflow, fields
 from trytond.pool import Pool
 from trytond.pyson import Eval
+from trytond.config import CONFIG
+from trytond.tools import get_smtp_server
 
 geoip = None
 try:
@@ -133,10 +135,42 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
                     'comment': contact_form['comment'],
                     'ip_address': request.remote_addr
                 })
+            self.send_notification_mail(lead_id)
 
             return redirect(request.args.get('next',
                 url_for('sale.opportunity.admin_lead', id=lead_id)))
         return render_template('crm/sale_form.jinja')
+
+    def send_notification_mail(self, lead_id):
+        """Send a notification mail to sales department whenever there is query
+        for new lead.
+
+        :param lead_id: ID of lead.
+        """
+        lead = self.browse(lead_id)
+
+        # Prepare the content for email.
+        subject = "[Openlabs CRM] New lead created by %s" % (lead.party.name)
+
+        receivers = [member.email for member in lead.company.sales_team
+                     if member.email]
+        if not receivers:
+            return
+
+        message = render_email(
+            from_email=CONFIG['smtp_from'],
+            to=', '.join(receivers),
+            subject=subject,
+            text_template='crm/emails/notification_text.jinja',
+            lead=lead
+        )
+
+        # Send mail.
+        server = get_smtp_server()
+        server.sendmail(
+            CONFIG['smtp_from'], receivers, message.as_string()
+        )
+        server.quit()
 
     def new_opportunity_thanks(self):
         "A thanks template rendered"
