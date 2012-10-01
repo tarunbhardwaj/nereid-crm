@@ -7,7 +7,10 @@
     :copyright: (c) 2012 by Openlabs Technologies & Consulting (P) Limited
     :license: GPLv3, see LICENSE for more details.
 """
+from decimal import Decimal
 import logging
+from wtforms import Form, IntegerField, DecimalField, validators
+
 from nereid import (request, abort, render_template, login_required, url_for,
     redirect, flash, jsonify, permissions_required)
 from nereid.contrib.pagination import Pagination
@@ -32,7 +35,6 @@ else:
             )
         except IOError:
             pass
-
 
 
 class Configuration(ModelSingleton, ModelSQL, ModelView):
@@ -142,6 +144,35 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
 
     @login_required
     @permissions_required(['sales.admin'])
+    def revenue_opportunity(self, lead_id):
+        """Set the Conversion Probability and estimated revenue amount
+        """
+        nereid_user_obj = Pool().get('nereid.user')
+        lead  = self.browse(lead_id)
+
+        nereid_user_id = nereid_user_obj.search(
+            [('employee', '=', lead.employee.id)], limit=1
+        )
+        if nereid_user_id:
+            employee = nereid_user_obj.browse(nereid_user_id[0])
+        else:
+            employee = None
+
+        if request.method == 'POST':
+            self.write(lead.id, {
+                'probability': request.form['probability'],
+                'amount': Decimal(request.form.get('amount'))
+            })
+            flash('Lead has been updated.')
+            return redirect(url_for(
+                'sale.opportunity.admin_lead', id=lead.id) + "#tab-revenue"
+            )
+        return render_template(
+            'crm/admin-lead.jinja', lead=lead, employee=employee,
+        )
+
+    @login_required
+    @permissions_required(['sales.admin'])
     def sales_home(self):
         """
         Shows a home page for the sale opportunities
@@ -223,7 +254,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         else:
             employee = None
         return render_template(
-            'crm/admin-lead.jinja', lead=lead, employee=employee
+            'crm/admin-lead.jinja', lead=lead, employee=employee,
         )
 
     @login_required

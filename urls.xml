@@ -38,6 +38,13 @@
             <field name="sequence" eval="100" />
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
+        <record id="revenue_application" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/sales/opportunity/lead-revenue/&lt;int:lead_id&gt;</field>
+            <field name="endpoint">sale.opportunity.revenue_opportunity</field>
+            <field name="sequence" eval="100" />
+            <field name="methods">("GET", "POST")</field>
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
         <record id="add_lead_comment" model="nereid.url_rule">
             <field name="rule">/&lt;language&gt;/sales/opportunity/lead/add-comment</field>
             <field name="endpoint">sale.opportunity.add_comment</field>
@@ -85,4 +92,3 @@
 
     </data>
 </tryton>
-
