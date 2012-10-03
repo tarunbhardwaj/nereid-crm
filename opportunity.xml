@@ -38,6 +38,8 @@ this repository contains the full copyright notices and license terms. -->
                             position="after">
                             <label name="ip_address"/>
                             <field name="ip_address"/>
+                            <label name="detected_country"/>
+                            <field name="detected_country"/>
                         </xpath>
                     </data>
                 ]]>

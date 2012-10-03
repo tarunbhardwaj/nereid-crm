@@ -9,7 +9,9 @@
 """
 from decimal import Decimal
 import logging
-from wtforms import Form, IntegerField, DecimalField, validators
+from wtforms import (Form, IntegerField, TextField, SelectField, TextAreaField, 
+    validators)
+from wtfrecaptcha.fields import RecaptchaField
 
 from nereid import (request, abort, render_template, login_required, url_for,
     redirect, flash, jsonify, permissions_required, render_email)
@@ -50,6 +52,21 @@ class Configuration(ModelSingleton, ModelSQL, ModelView):
 Configuration()
 
 
+class ContactUsForm(Form):
+    "Simple Contact Us form"
+    name = TextField('Name', [validators.Required(),])
+    company = TextField('Company')
+    country = SelectField('Country', [validators.Required(),], coerce=int)
+    email = TextField('e-mail', [validators.Required(), validators.Email()])
+    if 're_captcha_public' in CONFIG.options:
+        captcha = RecaptchaField(
+            public_key=CONFIG.options['re_captcha_public'],
+            private_key=CONFIG.options['re_captcha_private'], secure=True)
+    website = TextField('Website')
+    phone = TextField('Phone')
+    comment = TextAreaField('Comment', [validators.Required(),])
+
+
 class SaleOpportunity(Workflow, ModelSQL, ModelView):
     "Sale Opportunity"
     _name = "sale.opportunity"
@@ -59,11 +76,29 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         'nereid.review',
         'lead', 'Reviews'
     )
+    detected_country = fields.Char('Detected Country')
+
+    contactus_form = ContactUsForm
 
     def new_opportunity(self):
         """Create a new sale opportunity
         """
-        contact_form = request.form
+        country_obj = Pool().get('country.country')
+
+        if 're_captcha_public' in CONFIG.options:
+            contact_form = self.contactus_form(
+                request.form,
+                captcha={'ip_address': request.remote_addr}
+            )
+        else:
+            contact_form = self.contactus_form(request.form)
+
+        country_ids = country_obj.search([])
+        countries = country_obj.browse(country_ids)
+
+        contact_form.country.choices = [
+            (c.id, c.name) for c in countries
+        ]
 
         if request.method == 'POST':
             address_obj = Pool().get('party.address')
@@ -75,55 +110,64 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
 
             config = config_obj.browse(1)
 
+            contact_data = contact_form.data
+
             # Create Party
             company = request.nereid_website.company.id
 
-            country_ids = [False]
-            if not contact_form.get('country', None) and geoip:
-                country_code = geoip.country_code_by_addr(request.remote_addr)
-                if country_code:
-                    country_ids = country_obj.search(
-                        [('code', '=', country_code)], limit=1
-                    )
+            if not contact_data.get('country', None) and geoip:
+                detected_country = geoip.country_name_by_addr(
+                    request.remote_addr
+                )
+            else:
+                detected_country = ''
+
             party_id = party_obj.create({
-                'name': contact_form.get('company') or \
-                    contact_form['name'],
+                'name': contact_data.get('company') or \
+                    contact_data['name'],
                 'addresses': [
                     ('create', {
-                        'name': contact_form['name'],
-                        'country': country_ids[0],
+                        'name': contact_data['name'],
+                        'country': contact_data['country'],
                         })],
                 })
             party = party_obj.browse(party_id)
 
-            if contact_form.get('website'):
+            if contact_data.get('website'):
                 # Create website as contact mech
                 contact_mech_id = contact_mech_obj.create({
                         'type': 'website',
                         'party': party.id,
-                        'website': contact_form['website'],
+                        'website': contact_data['website'],
                     })
 
-            if contact_form.get('phone'):
+            if contact_data.get('phone'):
                 # Create phone as contact mech and assign as phone
                 contact_mech_id = contact_mech_obj.create({
                         'type': 'phone',
                         'party': party.id,
-                        'other_value': contact_form['phone'],
+                        'other_value': contact_data['phone'],
                     })
                 address_obj.write(party.addresses[0].id,
-                    {'phone': contact_form['phone']})
+                    {'phone': contact_data['phone']})
 
             # Create email as contact mech and assign as email
             contact_mech_id = contact_mech_obj.create({
                     'type': 'email',
                     'party': party.id,
-                    'email': contact_form['email'],
+                    'email': contact_data['email'],
                 })
             address_obj.write(party.addresses[0].id,
-                {'email': contact_form['email']})
+                {'email': contact_data['email']})
 
             # Create sale opportunity
+            if request.nereid_user.employee:
+                employee = request.nereid_user.employee.id
+                description = 'Created by %s' % \
+                    request.nereid_user.display_name
+            else:
+                employee = config.website_employee.id
+                description =  'Created from website'
             employee = request.nereid_user.employee.id \
                 if request.nereid_user.employee else config.website_employee.id
             lead_id = self.create({
@@ -131,15 +175,16 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
                     'company': company,
                     'employee': employee,
                     'address': party.addresses[0].id,
-                    'description': 'New lead from website',
-                    'comment': contact_form['comment'],
-                    'ip_address': request.remote_addr
+                    'description': description,
+                    'comment': contact_data['comment'],
+                    'ip_address': request.remote_addr,
+                    'detected_country': detected_country,
                 })
             self.send_notification_mail(lead_id)
 
             return redirect(request.args.get('next',
                 url_for('sale.opportunity.admin_lead', id=lead_id)))
-        return render_template('crm/sale_form.jinja')
+        return render_template('crm/sale_form.jinja', form=contact_form)
 
     def send_notification_mail(self, lead_id):
         """Send a notification mail to sales department whenever there is query
@@ -211,10 +256,17 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         """
         Shows a home page for the sale opportunities
         """
+        country_obj = Pool().get('country.country')
+
+        country_ids = country_obj.search([])
+        countries = country_obj.browse(country_ids)
+
         counter = {}
         for state in ('lead', 'opportunity', 'converted', 'cancelled', 'lost'):
             counter[state] = self.search([('state', '=', state)], count=True)
-        return render_template('crm/home.jinja', counter=counter)
+        return render_template(
+            'crm/home.jinja', counter=counter, countries=countries
+        )
 
     @login_required
     @permissions_required(['sales.admin'])
@@ -242,6 +294,11 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         """
         All leads captured
         """
+        country_obj = Pool().get('country.country')
+
+        country_ids = country_obj.search([])
+        countries = country_obj.browse(country_ids)
+
         filter_domain = []
 
         company = request.args.get('company', None)
@@ -268,7 +325,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
 
         leads = Pagination(self, filter_domain, page, 10)
         return render_template(
-            'crm/leads.jinja', leads=leads
+            'crm/leads.jinja', leads=leads, countries=countries
         )
 
     @login_required
@@ -278,6 +335,10 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
         Lead
         """
         nereid_user_obj = Pool().get('nereid.user')
+        country_obj = Pool().get('country.country')
+
+        country_ids = country_obj.search([])
+        countries = country_obj.browse(country_ids)
 
         lead = self.browse(id)
         nereid_user_id = nereid_user_obj.search(
@@ -289,6 +350,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
             employee = None
         return render_template(
             'crm/admin-lead.jinja', lead=lead, employee=employee,
+            countries=countries
         )
 
     @login_required
