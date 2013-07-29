@@ -100,7 +100,7 @@ class SaleOpportunity(Workflow, ModelSQL, ModelView):
             (c.id, c.name) for c in countries
         ]
 
-        if request.method == 'POST':
+        if request.method == 'POST' and contact_form.validate():
             address_obj = Pool().get('party.address')
             contact_mech_obj = Pool().get('party.contact_mechanism')
             party_obj = Pool().get('party.party')
