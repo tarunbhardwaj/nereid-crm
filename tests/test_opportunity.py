@@ -10,6 +10,7 @@
 import sys
 import os
 import datetime
+import simplejson as json
 from dateutil.relativedelta import relativedelta
 DIR = os.path.abspath(os.path.normpath(os.path.join(__file__,
     '..', '..', '..', '..', '..', 'trytond')))
@@ -44,6 +45,10 @@ class NereidCRMTestCase(NereidTestCase):
         self.party_obj = POOL.get('party.party')
         self.sale_opp_obj = POOL.get('sale.opportunity')
         self.user_obj = POOL.get('res.user')
+        self.Config = POOL.get('sale.configuration')
+        self.xhr_header = [
+            ('X-Requested-With', 'XMLHttpRequest'),
+        ]
 
     def _create_fiscal_year(self, date=None, company=None):
         """Creates a fiscal year and requried sequences
@@ -181,6 +186,9 @@ class NereidCRMTestCase(NereidTestCase):
             'company': self.company.id,
             'party': self.crm_admin.party.id,
         })
+
+        self.Config.write([self.Config(1)], {'website_employee': employee.id})
+
         self.nereid_user_obj.write([self.crm_admin], {
             'employee': employee.id,
         })
@@ -232,7 +240,6 @@ class NereidCRMTestCase(NereidTestCase):
         Address = POOL.get('party.address')
         ContactMech = POOL.get('party.contact_mechanism')
         Party = POOL.get('party.party')
-        Config = POOL.get('sale.configuration')
         Company = POOL.get('company.company')
         Country = POOL.get('country.country')
 
@@ -298,26 +305,17 @@ class NereidCRMTestCase(NereidTestCase):
 
             with app.test_client() as c:
                 response = c.post(
-                    '/en_US/login',
-                    data={
-                        'email': 'admin@openlabs.co.in',
-                        'password': 'password',
-                    }
-                )
-                self.assertEqual(response.status_code, 302)
-                response = c.post(
                     '/en_US/sales/opportunity/-new',
                     data={
                         'company': 'ABC',
                         'name': 'Tarun',
-                        'country': self.country.id,
-                        'website': 'http://example.com',
-                        'phone': '9512457895',
                         'email': 'demo@example.com',
                         'comment': 'comment',
-                    }
+                    },
+                    headers=self.xhr_header,
                 )
-                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(json.loads(response.data)['success'])
 
     def test_0020_revenue_opportunity(self):
         '''
