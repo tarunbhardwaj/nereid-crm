@@ -9,7 +9,8 @@
 """
 from trytond.pool import Pool
 
-from opportunity import *
+from opportunity import NereidUser, Configuration, NereidReview, \
+    CompanySalesTeam, SaleOpportunity, Company
 
 
 def register():
