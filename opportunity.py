@@ -70,19 +70,81 @@ class Configuration:
     )
 
 
+class Many2OneField(SelectField):
+    """
+    A select field that works like a many2one field in tryton
+
+    Additional arguments
+
+    :param model: The name of the model
+    :param domain: Tryton search domain
+    :param validators: wtforms validators
+    :param optional: True/False
+    """
+    def __init__(self, label=None, validators=None, model=None, domain=None,
+            optional=False, **kwargs):
+        if model is None:
+            raise Exception("Model name cannot be none")
+        self.model = model
+        self.optional = optional
+        self.domain = [] if domain is None else domain
+        super(Many2OneField, self).__init__(
+            label, validators, int, **kwargs
+        )
+
+    def iter_choices(self):
+        '''
+        Generates choices for select field.
+        '''
+        Model = Pool().get(self.model)
+
+        if self.optional:
+            yield ('', '', not self.data)
+        for record in Model.search(self.domain):
+            yield (record.id, record.rec_name, record.id == self.data)
+
+    def process_formdata(self, valuelist):
+        """
+        Process the form data only if the value is not None (null or undefined
+        in javascript)
+
+        :param valuelist: A list of values obtained from formdata
+        """
+        if valuelist and valuelist[0]:
+            super(Many2OneField, self).process_formdata(valuelist)
+        else:
+            self.data = None
+
+    def pre_validate(self, form):
+        '''
+        Validate select field in following conditions:
+            1. Optional is False.
+            2. Optional is True and data is not empty.
+        '''
+        Model = Pool().get(self.model)
+
+        if self.optional and not self.data:
+            # Need not to validate, if field is optional and data is empty
+            return
+
+        exists = Model.search(self.domain + [('id', '=', self.data)])
+        if not exists:
+            raise ValueError(self.gettext('Not a valid choice'))
+
+
 class ContactUsForm(Form):
     "Simple Contact Us form"
     name = TextField('Name', [validators.Required(),])
-    company = TextField('Company')
-    country = SelectField('Country', [validators.Required(),], coerce=int)
     email = TextField('e-mail', [validators.Required(), validators.Email()])
     if 're_captcha_public' in CONFIG.options:
         captcha = RecaptchaField(
             public_key=CONFIG.options['re_captcha_public'],
             private_key=CONFIG.options['re_captcha_private'], secure=True)
-    website = TextField('Website')
+    company = TextField('Company')
+    comment = TextAreaField('Comment')
+    country = Many2OneField('Country', model='country.country', optional=True)
     phone = TextField('Phone')
-    comment = TextAreaField('Comment', [validators.Required(),])
+    website = TextField('Website')
 
 
 class SaleOpportunity:
@@ -96,28 +158,18 @@ class SaleOpportunity:
     )
     detected_country = fields.Char('Detected Country')
 
-    contactus_form = ContactUsForm
-
     @classmethod
     def new_opportunity(cls):
         """
         Web handler to create a new sale opportunity
         """
-        Country = Pool().get('country.country')
-
         if 're_captcha_public' in CONFIG.options:
-            contact_form = cls.contactus_form(
+            contact_form = ContactUsForm(
                 request.form,
                 captcha={'ip_address': request.remote_addr}
             )
         else:
-            contact_form = cls.contactus_form(request.form)
-
-        countries = Country.search([])
-
-        contact_form.country.choices = [
-            (c.id, c.name) for c in countries
-        ]
+            contact_form = ContactUsForm(request.form)
 
         if request.method == 'POST' and contact_form.validate():
             Address = Pool().get('party.address')
@@ -132,12 +184,12 @@ class SaleOpportunity:
             # Create Party
             company = request.nereid_website.company.id
 
-            if not contact_data.get('country', None) and geoip:
+            if request.remote_addr and geoip:
                 detected_country = geoip.country_name_by_addr(
                     request.remote_addr
                 )
             else:
-                detected_country = ''
+                detected_country = None
 
             party = Party.create({
                 'name': contact_data.get('company') or \
@@ -145,7 +197,6 @@ class SaleOpportunity:
                 'addresses': [
                     ('create', {
                         'name': contact_data['name'],
-                        'country': contact_data['country'],
                         })],
                 })
 
@@ -199,6 +250,12 @@ class SaleOpportunity:
                 'detected_country': detected_country,
             })
             lead.send_notification_mail()
+            if request.is_xhr:
+                return jsonify({
+                    "success": True,
+                    "message": "Contact saved",
+                    "lead_id": lead.id,
+                })
 
             return redirect(request.args.get('next',
                 url_for('sale.opportunity.admin_lead', active_id=lead.id)))
