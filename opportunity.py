@@ -171,7 +171,13 @@ class SaleOpportunity:
         else:
             contact_form = ContactUsForm(request.form)
 
-        if request.method == 'POST' and contact_form.validate():
+        if request.method == 'POST':
+            if not contact_form.validate():
+                return jsonify({
+                    "success": False,
+                    "message": "Field validation error",
+                    "errors": contact_form.errors,
+                })
             Address = Pool().get('party.address')
             ContactMech = Pool().get('party.contact_mechanism')
             Party = Pool().get('party.party')
