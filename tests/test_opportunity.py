@@ -12,8 +12,11 @@ import os
 import datetime
 import simplejson as json
 from dateutil.relativedelta import relativedelta
-DIR = os.path.abspath(os.path.normpath(os.path.join(__file__,
-    '..', '..', '..', '..', '..', 'trytond')))
+DIR = os.path.abspath(os.path.normpath(
+    os.path.join(
+        __file__, '..', '..', '..', '..', '..', 'trytond')
+    )
+)
 if os.path.isdir(DIR):
     sys.path.insert(0, os.path.dirname(DIR))
 
@@ -137,7 +140,6 @@ class NereidCRMTestCase(NereidTestCase):
             raise Exception("Account not found")
         return account_ids[0] if account_ids else False
 
-
     def setup_defaults(self):
         '''
         Setup defaults for test
@@ -221,7 +223,7 @@ class NereidCRMTestCase(NereidTestCase):
         self.templates = {
             'localhost/home.jinja': '{{get_flashed_messages()}}',
             'localhost/login.jinja':
-                    '{{ login_form.errors }} {{get_flashed_messages()}}',
+            '{{ login_form.errors }} {{get_flashed_messages()}}',
             'localhost/crm/sale_form.jinja': ' ',
             'localhost/crm/leads.jinja': '{{leads|length}}',
         }
@@ -240,9 +242,6 @@ class NereidCRMTestCase(NereidTestCase):
         Address = POOL.get('party.address')
         ContactMech = POOL.get('party.contact_mechanism')
         Party = POOL.get('party.party')
-        Company = POOL.get('company.company')
-        Country = POOL.get('country.country')
-
         # Create Party
         party = Party.create({
             'name': "abc",
@@ -255,7 +254,7 @@ class NereidCRMTestCase(NereidTestCase):
         })
 
         # Create email as contact mech and assign as email
-        contact_mech = ContactMech.create({
+        ContactMech.create({
             'type': 'email',
             'party': party.id,
             'email': 'client@example.com',
@@ -413,7 +412,7 @@ class NereidCRMTestCase(NereidTestCase):
 def suite():
     suite = trytond.tests.test_tryton.suite()
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(
-            NereidCRMTestCase))
+        NereidCRMTestCase))
     return suite
 
 if __name__ == '__main__':

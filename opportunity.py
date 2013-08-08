@@ -9,16 +9,15 @@
 """
 from decimal import Decimal
 import logging
-from wtforms import (Form, IntegerField, TextField, SelectField, TextAreaField,
-    validators)
+from wtforms import (Form, TextField, SelectField, TextAreaField,
+                     validators)
 from wtfrecaptcha.fields import RecaptchaField
-
-from nereid import (request, abort, render_template, login_required, url_for,
-    redirect, flash, jsonify, permissions_required, render_email)
+from nereid import (request, render_template, login_required, url_for,
+                    redirect, flash, jsonify, permissions_required,
+                    render_email)
 from nereid.contrib.pagination import Pagination
-from trytond.model import ModelView, ModelSQL, ModelSingleton, Workflow, fields
+from trytond.model import ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
-from trytond.pyson import Eval
 from trytond.config import CONFIG
 from trytond.tools import get_smtp_server
 
@@ -81,16 +80,16 @@ class Many2OneField(SelectField):
     :param validators: wtforms validators
     :param optional: True/False
     """
-    def __init__(self, label=None, validators=None, model=None, domain=None,
-            optional=False, **kwargs):
+    def __init__(
+        self, label=None, validators=None, model=None, domain=None,
+        optional=False, **kwargs
+    ):
         if model is None:
             raise Exception("Model name cannot be none")
         self.model = model
         self.optional = optional
         self.domain = [] if domain is None else domain
-        super(Many2OneField, self).__init__(
-            label, validators, int, **kwargs
-        )
+        super(Many2OneField, self).__init__(label, validators, int, **kwargs)
 
     def iter_choices(self):
         '''
@@ -134,12 +133,13 @@ class Many2OneField(SelectField):
 
 class ContactUsForm(Form):
     "Simple Contact Us form"
-    name = TextField('Name', [validators.Required(),])
+    name = TextField('Name', [validators.Required()])
     email = TextField('e-mail', [validators.Required(), validators.Email()])
     if 're_captcha_public' in CONFIG.options:
         captcha = RecaptchaField(
             public_key=CONFIG.options['re_captcha_public'],
-            private_key=CONFIG.options['re_captcha_private'], secure=True)
+            private_key=CONFIG.options['re_captcha_private'], secure=True
+        )
     company = TextField('Company')
     comment = TextAreaField('Comment')
     country = Many2OneField('Country', model='country.country', optional=True)
@@ -182,9 +182,6 @@ class SaleOpportunity:
             ContactMech = Pool().get('party.contact_mechanism')
             Party = Pool().get('party.party')
             Config = Pool().get('sale.configuration')
-            Company = Pool().get('company.company')
-            Country = Pool().get('country.country')
-
             config = Config(1)
             contact_data = contact_form.data
             # Create Party
@@ -198,39 +195,39 @@ class SaleOpportunity:
                 detected_country = None
 
             party = Party.create({
-                'name': contact_data.get('company') or \
-                    contact_data['name'],
+                'name': contact_data.get('company') or contact_data['name'],
                 'addresses': [
                     ('create', {
                         'name': contact_data['name'],
-                        })],
-                })
+                    })
+                ],
+            })
 
             if contact_data.get('website'):
                 # Create website as contact mech
-                contact_mech = ContactMech.create({
-                        'type': 'website',
-                        'party': party.id,
-                        'website': contact_data['website'],
-                    })
+                ContactMech.create({
+                    'type': 'website',
+                    'party': party.id,
+                    'website': contact_data['website'],
+                })
 
             if contact_data.get('phone'):
                 # Create phone as contact mech and assign as phone
-                contact_mech = ContactMech.create({
-                        'type': 'phone',
-                        'party': party.id,
-                        'other_value': contact_data['phone'],
-                    })
+                ContactMech.create({
+                    'type': 'phone',
+                    'party': party.id,
+                    'other_value': contact_data['phone'],
+                })
                 Address.write(
                     [party.addresses[0]], {'phone': contact_data['phone']}
                 )
 
             # Create email as contact mech and assign as email
-            contact_mech = ContactMech.create({
-                    'type': 'email',
-                    'party': party.id,
-                    'email': contact_data['email'],
-                })
+            ContactMech.create({
+                'type': 'email',
+                'party': party.id,
+                'email': contact_data['email'],
+            })
             Address.write(
                 [party.addresses[0]], {'email': contact_data['email']}
             )
@@ -242,7 +239,7 @@ class SaleOpportunity:
                     request.nereid_user.display_name
             else:
                 employee = config.website_employee.id
-                description =  'Created from website'
+                description = 'Created from website'
             employee = request.nereid_user.employee.id \
                 if request.nereid_user.employee else config.website_employee.id
             lead = cls.create({
@@ -263,8 +260,10 @@ class SaleOpportunity:
                     "lead_id": lead.id,
                 })
 
-            return redirect(request.args.get('next',
-                url_for('sale.opportunity.admin_lead', active_id=lead.id)))
+            return redirect(request.args.get(
+                'next',
+                url_for('sale.opportunity.admin_lead', active_id=lead.id)
+            ))
         return render_template('crm/sale_form.jinja', form=contact_form)
 
     def send_notification_mail(self):
@@ -277,8 +276,9 @@ class SaleOpportunity:
         # Prepare the content for email.
         subject = "[Openlabs CRM] New lead created by %s" % (self.party.name)
 
-        receivers = [member.email for member in self.company.sales_team
-                     if member.email]
+        receivers = [
+            member.email for member in self.company.sales_team if member.email
+        ]
         if not receivers:
             return
 
@@ -324,8 +324,9 @@ class SaleOpportunity:
                 'amount': Decimal(request.form.get('amount'))
             })
             flash('Lead has been updated.')
-            return redirect(url_for(
-                'sale.opportunity.admin_lead', active_id=self.id) + "#tab-revenue"
+            return redirect(
+                url_for('sale.opportunity.admin_lead', active_id=self.id)
+                + "#tab-revenue"
             )
         return render_template(
             'crm/admin-lead.jinja', lead=self, employee=employee,
@@ -524,7 +525,6 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
 
-
 class Company:
     "Company"
     __name__ = 'company.company'
@@ -540,10 +540,12 @@ class CompanySalesTeam(ModelSQL):
     __name__ = 'company.company-nereid.user-sales'
     _table = 'company_nereid_sales_team_rel'
 
-    company = fields.Many2One('company.company', 'Company', ondelete='CASCADE',
+    company = fields.Many2One(
+        'company.company', 'Company', ondelete='CASCADE',
         required=True, select=True
     )
-    nereid_user = fields.Many2One('nereid.user', 'Nereid User',
+    nereid_user = fields.Many2One(
+        'nereid.user', 'Nereid User',
         ondelete='CASCADE', required=True, select=True,
     )
 
