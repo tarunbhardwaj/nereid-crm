@@ -9,6 +9,7 @@
 """
 import sys
 import os
+import unittest
 import datetime
 import simplejson as json
 from dateutil.relativedelta import relativedelta
@@ -20,7 +21,10 @@ DIR = os.path.abspath(os.path.normpath(
 if os.path.isdir(DIR):
     sys.path.insert(0, os.path.dirname(DIR))
 
-import unittest
+from mock import patch
+from trytond.config import CONFIG
+CONFIG['smtp_from'] = 'test@openlabs.co.in'
+
 import trytond.tests.test_tryton
 from trytond.tests.test_tryton import POOL, DB_NAME, USER, CONTEXT
 from trytond.transaction import Transaction
@@ -52,6 +56,15 @@ class NereidCRMTestCase(NereidTestCase):
         self.xhr_header = [
             ('X-Requested-With', 'XMLHttpRequest'),
         ]
+
+        # Patch SMTP Lib
+        self.smtplib_patcher = patch('smtplib.SMTP', autospec=True)
+        self.PatchedSMTP = self.smtplib_patcher.start()
+        self.mocked_smtp_instance = self.PatchedSMTP.return_value
+
+    def tearDown(self):
+        # Unpatch SMTP Lib
+        self.smtplib_patcher.stop()
 
     def _create_fiscal_year(self, date=None, company=None):
         """Creates a fiscal year and requried sequences
@@ -226,12 +239,17 @@ class NereidCRMTestCase(NereidTestCase):
             '{{ login_form.errors }} {{get_flashed_messages()}}',
             'localhost/crm/sale_form.jinja': ' ',
             'localhost/crm/leads.jinja': '{{leads|length}}',
+            'localhost/crm/emails/lead_thank_you_mail.jinja': ' ',
+            'localhost/crm/emails/sale_notification_text.jinja': ' ',
         }
         perm_admin, = self.nereid_permission_obj.search([
             ('value', '=', 'sales.admin'),
         ])
         self.nereid_user_obj.write(
             [self.crm_admin], {'permissions': [('set', [perm_admin])]}
+        )
+        self.company_obj.write(
+            [self.company], {'sales_team': [('add', [self.crm_admin])]}
         )
 
     def create_test_lead(self):

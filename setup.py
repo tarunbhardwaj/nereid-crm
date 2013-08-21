@@ -79,6 +79,9 @@ setup(
     [trytond.modules]
     nereid_crm = trytond.modules.nereid_crm
     """,
+    tests_require=[
+        'mock',
+    ],
     test_suite='tests',
     test_loader='trytond.test_loader:Loader',
 )

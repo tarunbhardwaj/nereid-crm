@@ -68,6 +68,10 @@ class Configuration:
         fields.Many2One('company.employee', 'Website Employee')
     )
 
+    sale_opportunity_email = fields.Property(
+        fields.Char('Sale Opportunity Email')
+    )
+
 
 class Many2OneField(SelectField):
     """
@@ -268,33 +272,52 @@ class SaleOpportunity:
 
     def send_notification_mail(self):
         """
-        Send a notification mail to sales department whenever there is query
-        for new lead.
-
-        :param lead_id: ID of lead.
+        Send a notification mail to sales department and thank you email to
+        lead whenever new opportunity is created.
         """
-        # Prepare the content for email.
-        subject = "[Openlabs CRM] New lead created by %s" % (self.party.name)
+        Config = Pool().get('sale.configuration')
 
-        receivers = [
+        config = Config(1)
+
+        # Prepare the content for email for lead
+        lead_receivers = [self.party.email]
+        lead_message = render_email(
+            from_email=config.sale_opportunity_email,
+            to=', '.join(lead_receivers),
+            subject="Thank You for your query",
+            text_template='crm/emails/lead_thank_you_mail.jinja',
+            lead=self
+        )
+
+        # Prepare the content for email for sale department
+        sale_subject = "[Openlabs CRM] New lead created by %s" % \
+            (self.party.name)
+
+        sale_receivers = [
             member.email for member in self.company.sales_team if member.email
         ]
-        if not receivers:
-            return
 
-        message = render_email(
+        sale_message = render_email(
             from_email=CONFIG['smtp_from'],
-            to=', '.join(receivers),
-            subject=subject,
-            text_template='crm/emails/notification_text.jinja',
+            to=', '.join(sale_receivers),
+            subject=sale_subject,
+            text_template='crm/emails/sale_notification_text.jinja',
             lead=self
         )
 
         # Send mail.
         server = get_smtp_server()
-        server.sendmail(
-            CONFIG['smtp_from'], receivers, message.as_string()
-        )
+        if sale_receivers:
+            # Send to sale department
+            server.sendmail(
+                CONFIG['smtp_from'], sale_receivers, sale_message.as_string()
+            )
+
+        if lead_receivers:
+            # Send to lead
+            server.sendmail(
+                CONFIG['smtp_from'], lead_receivers, lead_message.as_string()
+            )
         server.quit()
 
     @classmethod
