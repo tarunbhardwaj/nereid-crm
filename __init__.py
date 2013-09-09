@@ -4,7 +4,25 @@
 
     Nereid Frontend of Sale Opportunity as CRM
 
-    :copyright: (c) 2012 by Openlabs Technologies & Consulting (P) Limited
+    :copyright: (c) 2012-2013 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
 """
-import opportunity
+from trytond.pool import Pool
+
+from opportunity import NereidUser, Configuration, NereidReview, \
+    CompanySalesTeam, SaleOpportunity, Company
+
+
+def register():
+    """
+    This method will register trytond module nereid_crm
+    """
+    Pool.register(
+        NereidUser,
+        Configuration,
+        NereidReview,
+        CompanySalesTeam,
+        SaleOpportunity,
+        Company,
+        module='nereid_crm', type_='model',
+    )

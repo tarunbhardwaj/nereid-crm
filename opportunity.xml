@@ -58,6 +58,8 @@ this repository contains the full copyright notices and license terms. -->
                             position="after">
                             <label name="website_employee"/>
                             <field name="website_employee"/>
+                            <label name="sale_opportunity_email"/>
+                            <field name="sale_opportunity_email"/>
                         </xpath>
                     </data>
                 ]]>
