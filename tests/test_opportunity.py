@@ -40,19 +40,19 @@ class NereidCRMTestCase(NereidTestCase):
     def setUp(self):
         trytond.tests.test_tryton.install_module('nereid_crm')
 
-        self.nereid_website_obj = POOL.get('nereid.website')
-        self.nereid_permission_obj = POOL.get('nereid.permission')
-        self.nereid_user_obj = POOL.get('nereid.user')
-        self.url_map_obj = POOL.get('nereid.url_map')
-        self.company_obj = POOL.get('company.company')
-        self.employee_obj = POOL.get('company.employee')
-        self.currency_obj = POOL.get('currency.currency')
-        self.country_obj = POOL.get('country.country')
-        self.language_obj = POOL.get('ir.lang')
-        self.party_obj = POOL.get('party.party')
+        self.NereidWebsite = POOL.get('nereid.website')
+        self.NereidPermission = POOL.get('nereid.permission')
+        self.NereidUser = POOL.get('nereid.user')
+        self.UrlMap = POOL.get('nereid.url_map')
+        self.Company = POOL.get('company.company')
+        self.Employee = POOL.get('company.employee')
+        self.Currency = POOL.get('currency.currency')
+        self.Country = POOL.get('country.country')
+        self.Language = POOL.get('ir.lang')
         self.sale_opp_obj = POOL.get('sale.opportunity')
-        self.user_obj = POOL.get('res.user')
+        self.User = POOL.get('res.user')
         self.Config = POOL.get('sale.configuration')
+        self.Party = POOL.get('party.party')
         self.xhr_header = [
             ('X-Requested-With', 'XMLHttpRequest'),
         ]
@@ -62,6 +62,16 @@ class NereidCRMTestCase(NereidTestCase):
         self.PatchedSMTP = self.smtplib_patcher.start()
         self.mocked_smtp_instance = self.PatchedSMTP.return_value
 
+        self.templates = {
+            'home.jinja': '{{get_flashed_messages()}}',
+            'login.jinja':
+            '{{ login_form.errors }} {{get_flashed_messages()}}',
+            'crm/sale_form.jinja': ' ',
+            'crm/leads.jinja': '{{leads|length}}',
+            'crm/emails/lead_thank_you_mail.jinja': ' ',
+            'crm/emails/sale_notification_text.jinja': ' ',
+        }
+
     def tearDown(self):
         # Unpatch SMTP Lib
         self.smtplib_patcher.stop()
@@ -69,49 +79,49 @@ class NereidCRMTestCase(NereidTestCase):
     def _create_fiscal_year(self, date=None, company=None):
         """Creates a fiscal year and requried sequences
         """
-        fiscal_year_obj = POOL.get('account.fiscalyear')
-        sequence_obj = POOL.get('ir.sequence')
-        sequence_strict_obj = POOL.get('ir.sequence.strict')
-        company_obj = POOL.get('company.company')
+        FiscalYear = POOL.get('account.fiscalyear')
+        Sequence = POOL.get('ir.sequence')
+        SequenceStrict = POOL.get('ir.sequence.strict')
+        Company = POOL.get('company.company')
 
         if date is None:
             date = datetime.date.today()
 
         if company is None:
-            company, = company_obj.search([], limit=1)
+            company, = Company.search([], limit=1)
 
-        invoice_sequence = sequence_strict_obj.create({
+        invoice_sequence, = SequenceStrict.create([{
             'name': '%s' % date.year,
             'code': 'account.invoice',
             'company': company,
-            })
-        fiscal_year = fiscal_year_obj.create({
+        }])
+        fiscal_year, = FiscalYear.create([{
             'name': '%s' % date.year,
             'start_date': date + relativedelta(month=1, day=1),
             'end_date': date + relativedelta(month=12, day=31),
             'company': company,
-            'post_move_sequence': sequence_obj.create({
+            'post_move_sequence': Sequence.create([{
                 'name': '%s' % date.year,
                 'code': 'account.move',
                 'company': company,
-                }),
+            }])[0],
             'out_invoice_sequence': invoice_sequence,
             'in_invoice_sequence': invoice_sequence,
             'out_credit_note_sequence': invoice_sequence,
             'in_credit_note_sequence': invoice_sequence,
-            })
-        fiscal_year_obj.create_period([fiscal_year])
+        }])
+        FiscalYear.create_period([fiscal_year])
         return fiscal_year
 
     def _create_coa_minimal(self, company):
         """Create a minimal chart of accounts
         """
-        account_template_obj = POOL.get('account.account.template')
-        account_obj = POOL.get('account.account')
+        AccountTemplate = POOL.get('account.account.template')
+        Account = POOL.get('account.account')
         account_create_chart = POOL.get(
             'account.create_chart', type="wizard")
 
-        account_template, = account_template_obj.search(
+        account_template, = AccountTemplate.search(
             [('parent', '=', None)])
 
         session_id, _, _ = account_create_chart.create()
@@ -120,11 +130,11 @@ class NereidCRMTestCase(NereidTestCase):
         create_chart.account.company = company
         create_chart.transition_create_account()
 
-        receivable, = account_obj.search([
+        receivable, = Account.search([
             ('kind', '=', 'receivable'),
             ('company', '=', company),
             ])
-        payable, = account_obj.search([
+        payable, = Account.search([
             ('kind', '=', 'payable'),
             ('company', '=', company),
             ])
@@ -139,116 +149,123 @@ class NereidCRMTestCase(NereidTestCase):
         :param kind: receivable/payable/expense/revenue
         :param silent: dont raise error if account is not found
         """
-        account_obj = POOL.get('account.account')
-        company_obj = POOL.get('company.company')
+        Account = POOL.get('account.account')
+        Company = POOL.get('company.company')
 
         if company is None:
-            company, = company_obj.search([], limit=1)
+            company, = Company.search([], limit=1)
 
-        account_ids = account_obj.search([
+        accounts = Account.search([
             ('kind', '=', kind),
             ('company', '=', company)
             ], limit=1)
-        if not account_ids and not silent:
+        if not accounts and not silent:
             raise Exception("Account not found")
-        return account_ids[0] if account_ids else False
+        return accounts[0] if accounts else False
 
     def setup_defaults(self):
         '''
         Setup defaults for test
         '''
-        usd = self.currency_obj.create({
+        usd, = self.Currency.create([{
             'name': 'US Dollar',
             'code': 'USD',
             'symbol': '$',
-        })
-        self.country_obj.create({
+        }])
+        self.Country.create([{
             'name': 'India',
             'code': 'IN',
-        })
-        self.country, = self.country_obj.search([])
+        }])
+        self.country, = self.Country.search([])
 
         with Transaction().set_context(company=None):
-            self.company = self.company_obj.create({
+            company_party, = self.Party.create([{
                 'name': 'Openlabs',
+            }])
+            self.company, = self.Company.create([{
+                'party': company_party,
                 'currency': usd,
-            })
+            }])
 
-        self.user_obj.write([self.user_obj(USER)], {
+        self.User.write([self.User(USER)], {
             'company': self.company,
             'main_company': self.company,
         })
-        CONTEXT.update(self.user_obj.get_preferences(context_only=True))
+        CONTEXT.update(self.User.get_preferences(context_only=True))
 
         self._create_fiscal_year(company=self.company.id)
         self._create_coa_minimal(company=self.company.id)
 
-        self.guest_user = self.nereid_user_obj.create({
+        guest_party, = self.Party.create([{
             'name': 'Guest User',
+        }])
+
+        self.guest_user, = self.NereidUser.create([{
+            'party': guest_party,
             'display_name': 'Guest User',
             'email': 'guest@openlabs.co.in',
             'password': 'password',
             'company': self.company.id,
-        })
-        self.crm_admin = self.nereid_user_obj.create({
+        }])
+
+        admin_party1, = self.Party.create([{
             'name': 'Crm Admin',
+        }])
+        self.crm_admin, = self.NereidUser.create([{
+            'party': admin_party1,
             'display_name': 'Crm Admin',
             'email': 'admin@openlabs.co.in',
             'password': 'password',
             'company': self.company.id,
-        })
-        employee = self.employee_obj.create({
+        }])
+        employee, = self.Employee.create([{
             'company': self.company.id,
             'party': self.crm_admin.party.id,
-        })
+        }])
 
         self.Config.write([self.Config(1)], {'website_employee': employee.id})
 
-        self.nereid_user_obj.write([self.crm_admin], {
+        self.NereidUser.write([self.crm_admin], {
             'employee': employee.id,
         })
 
-        self.crm_admin2 = self.nereid_user_obj.create({
+        admin_party2, = self.Party.create([{
             'name': 'Crm Admin2',
+        }])
+
+        self.crm_admin2, = self.NereidUser.create([{
+            'party': admin_party2,
             'display_name': 'Crm Admin2',
             'email': 'admin2@openlabs.co.in',
             'password': 'password',
             'company': self.company.id,
-        })
-        employee = self.employee_obj.create({
+        }])
+        employee, = self.Employee.create([{
             'company': self.company.id,
             'party': self.crm_admin2.party.id,
-        })
-        self.nereid_user_obj.write([self.crm_admin2], {
+        }])
+        self.NereidUser.write([self.crm_admin2], {
             'employee': employee.id,
         })
 
-        url_map, = self.url_map_obj.search([], limit=1)
-        en_us, = self.language_obj.search([('code', '=', 'en_US')])
-        self.nereid_website_obj.create({
+        url_map, = self.UrlMap.search([], limit=1)
+        en_us, = self.Language.search([('code', '=', 'en_US')])
+        self.NereidWebsite.create([{
             'name': 'localhost',
             'url_map': url_map,
             'company': self.company,
             'application_user': USER,
             'default_language': en_us,
             'guest_user': self.guest_user,
-        })
-        self.templates = {
-            'localhost/home.jinja': '{{get_flashed_messages()}}',
-            'localhost/login.jinja':
-            '{{ login_form.errors }} {{get_flashed_messages()}}',
-            'localhost/crm/sale_form.jinja': ' ',
-            'localhost/crm/leads.jinja': '{{leads|length}}',
-            'localhost/crm/emails/lead_thank_you_mail.jinja': ' ',
-            'localhost/crm/emails/sale_notification_text.jinja': ' ',
-        }
-        perm_admin, = self.nereid_permission_obj.search([
+        }])
+
+        perm_admin, = self.NereidPermission.search([
             ('value', '=', 'sales.admin'),
         ])
-        self.nereid_user_obj.write(
+        self.NereidUser.write(
             [self.crm_admin], {'permissions': [('set', [perm_admin])]}
         )
-        self.company_obj.write(
+        self.Company.write(
             [self.company], {'sales_team': [('add', [self.crm_admin])]}
         )
 
@@ -261,29 +278,29 @@ class NereidCRMTestCase(NereidTestCase):
         ContactMech = POOL.get('party.contact_mechanism')
         Party = POOL.get('party.party')
         # Create Party
-        party = Party.create({
+        party, = Party.create([{
             'name': "abc",
             'addresses': [
-                ('create', {
+                ('create', [{
                     'name': 'abc',
                     'country': self.country,
-                })
+                }])
             ],
-        })
+        }])
 
         # Create email as contact mech and assign as email
-        ContactMech.create({
+        ContactMech.create([{
             'type': 'email',
             'party': party.id,
             'email': 'client@example.com',
-        })
+        }])
         Address.write(
             [party.addresses[0]], {'email': 'client@example.com'}
         )
 
         # Create sale opportunity
         description = 'Created by %s' % self.crm_admin.display_name
-        self.lead = self.sale_opp_obj.create({
+        self.lead, = self.sale_opp_obj.create([{
             'party': party.id,
             'company': self.company,
             'employee': self.crm_admin.employee.id,
@@ -292,7 +309,7 @@ class NereidCRMTestCase(NereidTestCase):
             'comment': 'comment',
             'ip_address': '127.0.0.1',
             'detected_country': '',
-        })
+        }])
 
     def get_template_source(self, name):
         """
@@ -386,7 +403,7 @@ class NereidCRMTestCase(NereidTestCase):
                 self.assertEqual(response.status_code, 302)
                 response = c.get('/en_US/login')
                 self.assertTrue(
-                    "Lead already assigned to %s" % self.crm_admin.name
+                    "Lead already assigned to %s" % self.crm_admin.party.name
                     in response.data
                 )
                 response = c.post(
@@ -398,7 +415,7 @@ class NereidCRMTestCase(NereidTestCase):
                 self.assertEqual(response.status_code, 302)
                 response = c.get('/en_US/login')
                 self.assertTrue(
-                    "Lead assigned to %s" % self.crm_admin2.name
+                    "Lead assigned to %s" % self.crm_admin2.party.name
                     in response.data
                 )
 

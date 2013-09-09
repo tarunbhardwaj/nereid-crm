@@ -198,40 +198,40 @@ class SaleOpportunity:
             else:
                 detected_country = None
 
-            party = Party.create({
+            party, = Party.create([{
                 'name': contact_data.get('company') or contact_data['name'],
                 'addresses': [
-                    ('create', {
+                    ('create', [{
                         'name': contact_data['name'],
-                    })
+                    }])
                 ],
-            })
+            }])
 
             if contact_data.get('website'):
                 # Create website as contact mech
-                ContactMech.create({
+                ContactMech.create([{
                     'type': 'website',
                     'party': party.id,
                     'website': contact_data['website'],
-                })
+                }])
 
             if contact_data.get('phone'):
                 # Create phone as contact mech and assign as phone
-                ContactMech.create({
+                ContactMech.create([{
                     'type': 'phone',
                     'party': party.id,
                     'other_value': contact_data['phone'],
-                })
+                }])
                 Address.write(
                     [party.addresses[0]], {'phone': contact_data['phone']}
                 )
 
             # Create email as contact mech and assign as email
-            ContactMech.create({
+            ContactMech.create([{
                 'type': 'email',
                 'party': party.id,
                 'email': contact_data['email'],
-            })
+            }])
             Address.write(
                 [party.addresses[0]], {'email': contact_data['email']}
             )
@@ -246,7 +246,7 @@ class SaleOpportunity:
                 description = 'Created from website'
             employee = request.nereid_user.employee.id \
                 if request.nereid_user.employee else config.website_employee.id
-            lead = cls.create({
+            lead, = cls.create([{
                 'party': party.id,
                 'company': company,
                 'employee': employee,
@@ -255,7 +255,7 @@ class SaleOpportunity:
                 'comment': contact_data['comment'],
                 'ip_address': request.remote_addr,
                 'detected_country': detected_country,
-            })
+            }])
             lead.send_notification_mail()
             if request.is_xhr:
                 return jsonify({
@@ -381,14 +381,14 @@ class SaleOpportunity:
 
         new_assignee = NereidUser(int(request.form['user']))
         if self.employee.id == new_assignee.employee.id:
-            flash("Lead already assigned to %s" % new_assignee.name)
+            flash("Lead already assigned to %s" % new_assignee.party.name)
             return redirect(request.referrer)
 
         self.write([self], {
             'employee': new_assignee.employee.id
         })
 
-        flash("Lead assigned to %s" % new_assignee.name)
+        flash("Lead assigned to %s" % new_assignee.party.name)
         return redirect(request.referrer)
 
     @classmethod
@@ -463,13 +463,13 @@ class SaleOpportunity:
         lead_id = request.form.get('lead', type=int)
         lead = cls(lead_id)
 
-        Review.create({
+        Review.create([{
             'lead': lead.id,
             'title': request.form.get('title'),
             'comment': request.form.get('comment'),
             'nereid_user': request.nereid_user.id,
             'party': lead.party.id,
-        })
+        }])
         if request.is_xhr:
             return jsonify({
                 'success': True,
