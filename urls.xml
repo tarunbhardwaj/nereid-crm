@@ -2,14 +2,14 @@
 <tryton>
     <data>
         <record id="crm_home" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales</field>
+            <field name="rule">/sales</field>
             <field name="endpoint">sale.opportunity.sales_home</field>
             <field name="sequence" eval="100" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="new_sale_opportunity" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/-new</field>
+            <field name="rule">/sales/opportunity/-new</field>
             <field name="endpoint">sale.opportunity.new_opportunity</field>
             <field name="sequence" eval="300" />
             <field name="http_method_get" eval="True"/>
@@ -17,35 +17,35 @@
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="new_sale_opportunity_success" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/-thanks</field>
+            <field name="rule">/sales/opportunity/-thanks</field>
             <field name="endpoint">sale.opportunity.new_opportunity_thanks</field>
             <field name="sequence" eval="300" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="all_leads" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/leads</field>
+            <field name="rule">/sales/opportunity/leads</field>
             <field name="endpoint">sale.opportunity.all_leads</field>
             <field name="sequence" eval="300" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="all_leads_page" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/leads/&lt;int:page&gt;</field>
+            <field name="rule">/sales/opportunity/leads/&lt;int:page&gt;</field>
             <field name="endpoint">sale.opportunity.all_leads</field>
             <field name="sequence" eval="300" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="admin_application" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/lead/&lt;int:active_id&gt;</field>
+            <field name="rule">/sales/opportunity/lead/&lt;int:active_id&gt;</field>
             <field name="endpoint">sale.opportunity.admin_lead</field>
             <field name="sequence" eval="100" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="revenue_application" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/lead-revenue/&lt;int:active_id&gt;</field>
+            <field name="rule">/sales/opportunity/lead-revenue/&lt;int:active_id&gt;</field>
             <field name="endpoint">sale.opportunity.revenue_opportunity</field>
             <field name="sequence" eval="100" />
             <field name="http_method_get" eval="True"/>
@@ -53,49 +53,49 @@
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="add_lead_comment" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/sales/opportunity/lead/add-comment</field>
+            <field name="rule">/sales/opportunity/lead/add-comment</field>
             <field name="endpoint">sale.opportunity.add_comment</field>
             <field name="sequence" eval="100" />
             <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_assign" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-assign</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-assign</field>
             <field name="endpoint">sale.opportunity.assign_lead</field>
             <field name="sequence" eval="120" />
             <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_opportunity" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-opportunity</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-opportunity</field>
             <field name="endpoint">sale.opportunity.mark_opportunity</field>
             <field name="sequence" eval="120" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_lead" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-lead</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-lead</field>
             <field name="endpoint">sale.opportunity.mark_lead</field>
             <field name="sequence" eval="120" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_lost" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-lost</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-lost</field>
             <field name="endpoint">sale.opportunity.mark_lost</field>
             <field name="sequence" eval="120" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_convert" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-convert</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-convert</field>
             <field name="endpoint">sale.opportunity.mark_converted</field>
             <field name="sequence" eval="120" />
             <field name="http_method_get" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_cancel" model="nereid.url_rule">
-            <field name="rule">/&lt;language&gt;/lead-&lt;int:active_id&gt;/-cancel</field>
+            <field name="rule">/lead-&lt;int:active_id&gt;/-cancel</field>
             <field name="endpoint">sale.opportunity.mark_cancelled</field>
             <field name="sequence" eval="120" />
             <field name="http_method_get" eval="True"/>
