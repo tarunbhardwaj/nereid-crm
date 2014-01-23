@@ -7,6 +7,7 @@
     :copyright: (c) 2012-2013 by Openlabs Technologies & Consulting (P) Limited
     :license: GPLv3, see LICENSE for more details.
 """
+import os
 from decimal import Decimal
 import logging
 from wtforms import (Form, TextField, SelectField, TextAreaField,
@@ -34,17 +35,15 @@ try:
 except ImportError:
     logging.error("pygeoip is not installed")
 else:
-    try:
-        # Usual location in Ubuntu
-        geoip = GeoIP('/usr/share/GeoIP/GeoIP.dat')
-    except IOError:
-        try:
-            # this is where brew installs it
-            geoip = GeoIP(
-                '/usr/local/Cellar/geoip/1.4.8/share/GeoIP/GeoIP.dat'
-            )
-        except IOError:
-            pass
+    # Usual location in Ubuntu
+    path1 = '/usr/share/GeoIP/GeoIP.dat'
+
+    # this is where brew installs it
+    path2 = '/usr/local/Cellar/geoip/1.4.8/share/GeoIP/GeoIP.dat'
+    if os.path.isfile(path1):
+        geoip = GeoIP(path1)
+    elif os.path.isfile(path2):
+        geoip = GeoIP(path2)
 
 
 class NereidUser:

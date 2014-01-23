@@ -4,7 +4,7 @@
 
     Test suite for crm
 
-    :copyright: (c) 2013 by Openlabs Technologies & Consulting (P) Limited
+    :copyright: (c) 2013-2014 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
 """
 import sys
@@ -53,6 +53,7 @@ class NereidCRMTestCase(NereidTestCase):
         self.User = POOL.get('res.user')
         self.Config = POOL.get('sale.configuration')
         self.Party = POOL.get('party.party')
+        self.Locale = POOL.get('nereid.website.locale')
         self.xhr_header = [
             ('X-Requested-With', 'XMLHttpRequest'),
         ]
@@ -250,12 +251,17 @@ class NereidCRMTestCase(NereidTestCase):
 
         url_map, = self.UrlMap.search([], limit=1)
         en_us, = self.Language.search([('code', '=', 'en_US')])
+        locale_en, = self.Locale.create([{
+            'code': 'en_US',
+            'language': en_us.id,
+            'currency': usd.id,
+        }])
         self.NereidWebsite.create([{
             'name': 'localhost',
             'url_map': url_map,
             'company': self.company,
             'application_user': USER,
-            'default_language': en_us,
+            'default_locale': locale_en.id,
             'guest_user': self.guest_user,
         }])
 
@@ -339,7 +345,7 @@ class NereidCRMTestCase(NereidTestCase):
 
             with app.test_client() as c:
                 response = c.post(
-                    '/en_US/sales/opportunity/-new',
+                    '/sales/opportunity/-new',
                     data={
                         'company': 'ABC',
                         'name': 'Tarun',
@@ -361,7 +367,7 @@ class NereidCRMTestCase(NereidTestCase):
 
             with app.test_client() as c:
                 response = c.post(
-                    '/en_US/login',
+                    '/login',
                     data={
                         'email': 'admin@openlabs.co.in',
                         'password': 'password',
@@ -369,7 +375,7 @@ class NereidCRMTestCase(NereidTestCase):
                 )
                 self.assertEqual(response.status_code, 302)
                 response = c.post(
-                    '/en_US/sales/opportunity/lead-revenue/%d' % self.lead.id,
+                    '/sales/opportunity/lead-revenue/%d' % self.lead.id,
                     data={
                         'probability': 1,
                         'amount': 100,
@@ -387,7 +393,7 @@ class NereidCRMTestCase(NereidTestCase):
 
             with app.test_client() as c:
                 response = c.post(
-                    '/en_US/login',
+                    '/login',
                     data={
                         'email': 'admin@openlabs.co.in',
                         'password': 'password',
@@ -395,25 +401,25 @@ class NereidCRMTestCase(NereidTestCase):
                 )
                 self.assertEqual(response.status_code, 302)
                 response = c.post(
-                    '/en_US/lead-%d/-assign' % self.lead.id,
+                    '/lead-%d/-assign' % self.lead.id,
                     data={
                         'user': self.crm_admin.id,
                     }
                 )
                 self.assertEqual(response.status_code, 302)
-                response = c.get('/en_US/login')
+                response = c.get('/login')
                 self.assertTrue(
                     "Lead already assigned to %s" % self.crm_admin.party.name
                     in response.data
                 )
                 response = c.post(
-                    '/en_US/lead-%d/-assign' % self.lead.id,
+                    '/lead-%d/-assign' % self.lead.id,
                     data={
                         'user': self.crm_admin2.id,
                     }
                 )
                 self.assertEqual(response.status_code, 302)
-                response = c.get('/en_US/login')
+                response = c.get('/login')
                 self.assertTrue(
                     "Lead assigned to %s" % self.crm_admin2.party.name
                     in response.data
@@ -429,7 +435,7 @@ class NereidCRMTestCase(NereidTestCase):
 
             with app.test_client() as c:
                 response = c.post(
-                    '/en_US/login',
+                    '/login',
                     data={
                         'email': 'admin@openlabs.co.in',
                         'password': 'password',
@@ -437,7 +443,7 @@ class NereidCRMTestCase(NereidTestCase):
                 )
                 self.assertEqual(response.status_code, 302)
                 response = c.get(
-                    '/en_US/sales/opportunity/leads',
+                    '/sales/opportunity/leads',
                 )
                 self.assertEqual(
                     response.data, u'1'
