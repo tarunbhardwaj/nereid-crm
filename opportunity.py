@@ -4,17 +4,18 @@
 
     Mini CRM based on Nereid and Sale Opprotunity
 
-    :copyright: (c) 2012-2013 by Openlabs Technologies & Consulting (P) Limited
+    :copyright: (c) 2012-2014 by Openlabs Technologies & Consulting (P) Limited
     :license: GPLv3, see LICENSE for more details.
 """
+import os
 from decimal import Decimal
 import logging
 from wtforms import (Form, TextField, SelectField, TextAreaField,
                      validators)
-from wtfrecaptcha.fields import RecaptchaField
+from flask.ext.wtf import RecaptchaField
 from nereid import (request, render_template, login_required, url_for,
                     redirect, flash, jsonify, permissions_required,
-                    render_email)
+                    render_email, current_user)
 from nereid.contrib.pagination import Pagination
 from trytond.model import ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
@@ -34,17 +35,15 @@ try:
 except ImportError:
     logging.error("pygeoip is not installed")
 else:
-    try:
-        # Usual location in Ubuntu
-        geoip = GeoIP('/usr/share/GeoIP/GeoIP.dat')
-    except IOError:
-        try:
-            # this is where brew installs it
-            geoip = GeoIP(
-                '/usr/local/Cellar/geoip/1.4.8/share/GeoIP/GeoIP.dat'
-            )
-        except IOError:
-            pass
+    # Usual location in Ubuntu
+    path1 = '/usr/share/GeoIP/GeoIP.dat'
+
+    # this is where brew installs it
+    path2 = '/usr/local/Cellar/geoip/1.4.8/share/GeoIP/GeoIP.dat'
+    if os.path.isfile(path1):
+        geoip = GeoIP(path1)
+    elif os.path.isfile(path2):
+        geoip = GeoIP(path2)
 
 
 class NereidUser:
@@ -237,15 +236,16 @@ class SaleOpportunity:
             )
 
             # Create sale opportunity
-            if request.nereid_user.employee:
-                employee = request.nereid_user.employee.id
+            if not current_user.is_anonymous() and current_user.employee:
+                employee = current_user.employee.id
                 description = 'Created by %s' % \
-                    request.nereid_user.display_name
+                    current_user.display_name
             else:
                 employee = config.website_employee.id
                 description = 'Created from website'
-            employee = request.nereid_user.employee.id \
-                if request.nereid_user.employee else config.website_employee.id
+            employee = current_user.employee.id \
+                if not current_user.is_anonymous() and current_user.employee \
+                else config.website_employee.id
             lead, = cls.create([{
                 'party': party.id,
                 'company': company,
@@ -257,7 +257,7 @@ class SaleOpportunity:
                 'detected_country': detected_country,
             }])
             lead.send_notification_mail()
-            if request.is_xhr:
+            if request.is_xhr or request.is_json:
                 return jsonify({
                     "success": True,
                     "message": "Contact saved",
@@ -467,10 +467,10 @@ class SaleOpportunity:
             'lead': lead.id,
             'title': request.form.get('title'),
             'comment': request.form.get('comment'),
-            'nereid_user': request.nereid_user.id,
+            'nereid_user': current_user.id,
             'party': lead.party.id,
         }])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'The comment has been added.'
@@ -484,7 +484,7 @@ class SaleOpportunity:
         Convert the lead to opportunity
         """
         self.opportunity([self])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'Good Work! This lead is an opportunity now.'
@@ -498,7 +498,7 @@ class SaleOpportunity:
         Convert the lead to lost
         """
         self.lost([self])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'The lead is marked as lost.'
@@ -512,7 +512,7 @@ class SaleOpportunity:
         Convert the opportunity to lead
         """
         self.lead([self])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'The lead is marked back to open.'
@@ -526,7 +526,7 @@ class SaleOpportunity:
         Convert the opportunity
         """
         self.convert([self])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'Awesome! The Opportunity is converted.'
@@ -540,7 +540,7 @@ class SaleOpportunity:
         Convert the lead as cancelled
         """
         self.cancel([self])
-        if request.is_xhr:
+        if request.is_xhr or request.is_json:
             return jsonify({
                 'success': True,
                 'message': 'The lead is cancelled.'
