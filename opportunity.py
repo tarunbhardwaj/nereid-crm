@@ -243,9 +243,6 @@ class SaleOpportunity:
             else:
                 employee = config.website_employee.id
                 description = 'Created from website'
-            employee = current_user.employee.id \
-                if not current_user.is_anonymous() and current_user.employee \
-                else config.website_employee.id
             lead, = cls.create([{
                 'party': party.id,
                 'company': company,
