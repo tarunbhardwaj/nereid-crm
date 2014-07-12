@@ -181,7 +181,6 @@ class SaleOpportunity:
                     "message": "Field validation error",
                     "errors": contact_form.errors,
                 })
-            Address = Pool().get('party.address')
             ContactMech = Pool().get('party.contact_mechanism')
             Party = Pool().get('party.party')
             Config = Pool().get('sale.configuration')
@@ -221,9 +220,6 @@ class SaleOpportunity:
                     'party': party.id,
                     'other_value': contact_data['phone'],
                 }])
-                Address.write(
-                    [party.addresses[0]], {'phone': contact_data['phone']}
-                )
 
             # Create email as contact mech and assign as email
             ContactMech.create([{
@@ -231,9 +227,6 @@ class SaleOpportunity:
                 'party': party.id,
                 'email': contact_data['email'],
             }])
-            Address.write(
-                [party.addresses[0]], {'email': contact_data['email']}
-            )
 
             # Create sale opportunity
             if not current_user.is_anonymous() and current_user.employee:
