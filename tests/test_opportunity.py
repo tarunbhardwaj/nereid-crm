@@ -280,7 +280,6 @@ class NereidCRMTestCase(NereidTestCase):
         Setup test sale
         '''
         self.setup_defaults()
-        Address = POOL.get('party.address')
         ContactMech = POOL.get('party.contact_mechanism')
         Party = POOL.get('party.party')
         # Create Party
@@ -300,9 +299,6 @@ class NereidCRMTestCase(NereidTestCase):
             'party': party.id,
             'email': 'client@example.com',
         }])
-        Address.write(
-            [party.addresses[0]], {'email': 'client@example.com'}
-        )
 
         # Create sale opportunity
         description = 'Created by %s' % self.crm_admin.display_name
