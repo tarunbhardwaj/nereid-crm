@@ -197,18 +197,6 @@ class NereidCRMTestCase(NereidTestCase):
         self._create_fiscal_year(company=self.company.id)
         self._create_coa_minimal(company=self.company.id)
 
-        guest_party, = self.Party.create([{
-            'name': 'Guest User',
-        }])
-
-        self.guest_user, = self.NereidUser.create([{
-            'party': guest_party,
-            'display_name': 'Guest User',
-            'email': 'guest@openlabs.co.in',
-            'password': 'password',
-            'company': self.company.id,
-        }])
-
         admin_party1, = self.Party.create([{
             'name': 'Crm Admin',
         }])
@@ -262,14 +250,13 @@ class NereidCRMTestCase(NereidTestCase):
             'company': self.company,
             'application_user': USER,
             'default_locale': locale_en.id,
-            'guest_user': self.guest_user,
         }])
 
         perm_admin, = self.NereidPermission.search([
             ('value', '=', 'sales.admin'),
         ])
         self.NereidUser.write(
-            [self.crm_admin], {'permissions': [('set', [perm_admin])]}
+            [self.crm_admin], {'permissions': [('add', [perm_admin])]}
         )
         self.Company.write(
             [self.company], {'sales_team': [('add', [self.crm_admin])]}
