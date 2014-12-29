@@ -13,13 +13,15 @@ import logging
 from wtforms import (Form, TextField, SelectField, TextAreaField,
                      validators)
 from flask.ext.wtf import RecaptchaField
-from nereid import (request, render_template, login_required, url_for,
-                    redirect, flash, jsonify, permissions_required,
-                    render_email, current_user)
+from nereid import (
+    request, render_template, login_required, url_for,
+    redirect, flash, jsonify, permissions_required,
+    render_email, current_user, route
+)
 from nereid.contrib.pagination import Pagination
 from trytond.model import ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
-from trytond.config import CONFIG
+from trytond.config import config
 from trytond.tools import get_smtp_server
 
 
@@ -138,10 +140,12 @@ class ContactUsForm(Form):
     "Simple Contact Us form"
     name = TextField('Name', [validators.Required()])
     email = TextField('e-mail', [validators.Required(), validators.Email()])
-    if 're_captcha_public' in CONFIG.options:
+    if config.has_option('nereid', 're_captcha_public_key') and \
+            config.has_option('nereid', 're_captcha_private_key'):
         captcha = RecaptchaField(
-            public_key=CONFIG.options['re_captcha_public'],
-            private_key=CONFIG.options['re_captcha_private'], secure=True
+            public_key=config.get('nereid', 're_captcha_public_key'),
+            private_key=config.get('nereid', 're_captcha_private_key'),
+            secure=True
         )
     company = TextField('Company')
     comment = TextAreaField('Comment')
@@ -162,11 +166,12 @@ class SaleOpportunity:
     detected_country = fields.Char('Detected Country')
 
     @classmethod
+    @route('/sales/opportunity/-new', methods=['POST', 'GET'])
     def new_opportunity(cls):
         """
         Web handler to create a new sale opportunity
         """
-        if 're_captcha_public' in CONFIG.options:
+        if config.has_option('nereid', 're_captcha_public_key'):
             contact_form = ContactUsForm(
                 request.form,
                 captcha={'ip_address': request.remote_addr}
@@ -184,7 +189,7 @@ class SaleOpportunity:
             ContactMech = Pool().get('party.contact_mechanism')
             Party = Pool().get('party.party')
             Config = Pool().get('sale.configuration')
-            config = Config(1)
+            sale_config = Config(1)
             contact_data = contact_form.data
             # Create Party
             company = request.nereid_website.company.id
@@ -234,7 +239,7 @@ class SaleOpportunity:
                 description = 'Created by %s' % \
                     current_user.display_name
             else:
-                employee = config.website_employee.id
+                employee = sale_config.website_employee.id
                 description = 'Created from website'
             lead, = cls.create([{
                 'party': party.id,
@@ -267,12 +272,12 @@ class SaleOpportunity:
         """
         Config = Pool().get('sale.configuration')
 
-        config = Config(1)
+        sale_config = Config(1)
 
         # Prepare the content for email for lead
         lead_receivers = [self.party.email]
         lead_message = render_email(
-            from_email=config.sale_opportunity_email,
+            from_email=sale_config.sale_opportunity_email,
             to=', '.join(lead_receivers),
             subject="Thank You for your query",
             text_template='crm/emails/lead_thank_you_mail.jinja',
@@ -287,8 +292,10 @@ class SaleOpportunity:
             member.email for member in self.company.sales_team if member.email
         ]
 
+        sender = config.get('email', 'from')
+
         sale_message = render_email(
-            from_email=CONFIG['smtp_from'],
+            from_email=sender,
             to=', '.join(sale_receivers),
             subject=sale_subject,
             text_template='crm/emails/sale_notification_text.jinja',
@@ -300,22 +307,27 @@ class SaleOpportunity:
         if sale_receivers:
             # Send to sale department
             server.sendmail(
-                CONFIG['smtp_from'], sale_receivers, sale_message.as_string()
+                sender, sale_receivers, sale_message.as_string()
             )
 
         if lead_receivers:
             # Send to lead
             server.sendmail(
-                CONFIG['smtp_from'], lead_receivers, lead_message.as_string()
+                sender, lead_receivers, lead_message.as_string()
             )
         server.quit()
 
     @classmethod
+    @route('/sales/opportunity/-thanks', methods=['GET'])
     def new_opportunity_thanks(cls):
         "A thanks template rendered"
         return render_template('crm/thanks.jinja')
 
     @login_required
+    @route(
+        '/sales/opportunity/lead-revenue/<int:active_id>',
+        methods=['GET', 'POST']
+    )
     @permissions_required(['sales.admin'])
     def revenue_opportunity(self):
         """
@@ -346,6 +358,7 @@ class SaleOpportunity:
         )
 
     @classmethod
+    @route('/sales')
     @login_required
     @permissions_required(['sales.admin'])
     def sales_home(cls):
@@ -364,6 +377,7 @@ class SaleOpportunity:
         )
 
     @login_required
+    @route('/lead-<int:active_id>/-assign', methods=['POST'])
     @permissions_required(['sales.admin'])
     def assign_lead(self):
         "Change the employee on lead"
@@ -382,6 +396,8 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @classmethod
+    @route('/sales/opportunity/leads', methods=['GET'])
+    @route('/sales/opportunity/leads/<int:page>', methods=['GET'])
     @login_required
     @permissions_required(['sales.admin'])
     def all_leads(cls, page=1):
@@ -420,6 +436,7 @@ class SaleOpportunity:
             'crm/leads.jinja', leads=leads, countries=countries
         )
 
+    @route('/sales/opportunity/lead/<int:active_id>')
     @login_required
     @permissions_required(['sales.admin'])
     def admin_lead(self):
@@ -443,6 +460,7 @@ class SaleOpportunity:
         )
 
     @classmethod
+    @route('/sales/opportunity/lead/add-comment', methods=['POST'])
     @login_required
     @permissions_required(['sales.admin'])
     def add_comment(cls):
@@ -468,6 +486,7 @@ class SaleOpportunity:
         return redirect(request.referrer + '#tab-comment')
 
     @login_required
+    @route('/lead-<int:active_id>/-opportunity')
     @permissions_required(['sales.admin'])
     def mark_opportunity(self):
         """
@@ -482,6 +501,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
+    @route('/lead-<int:active_id>/-lost')
     @permissions_required(['sales.admin'])
     def mark_lost(self):
         """
@@ -496,6 +516,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
+    @route('/lead-<int:active_id>/-lead')
     @permissions_required(['sales.admin'])
     def mark_lead(self):
         """
@@ -510,6 +531,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
+    @route('/lead-<int:active_id>/-convert')
     @permissions_required(['sales.admin'])
     def mark_converted(self):
         """
@@ -524,6 +546,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
+    @route('/lead-<int:active_id>/-cancel')
     @permissions_required(['sales.admin'])
     def mark_cancelled(self):
         """
