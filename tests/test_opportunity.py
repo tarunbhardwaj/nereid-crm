@@ -13,17 +13,19 @@ import unittest
 import datetime
 import simplejson as json
 from dateutil.relativedelta import relativedelta
-DIR = os.path.abspath(os.path.normpath(
-    os.path.join(
-        __file__, '..', '..', '..', '..', '..', 'trytond')
+DIR = os.path.abspath(
+    os.path.normpath(
+        os.path.join(
+            __file__, '..', '..', '..', '..', '..', 'trytond'
+        )
     )
 )
 if os.path.isdir(DIR):
     sys.path.insert(0, os.path.dirname(DIR))
 
 from mock import patch
-from trytond.config import CONFIG
-CONFIG['smtp_from'] = 'test@openlabs.co.in'
+from trytond.config import config
+config.set('email', 'from', 'test@openlabs.co.in')
 
 import trytond.tests.test_tryton
 from trytond.tests.test_tryton import POOL, DB_NAME, USER, CONTEXT
@@ -43,7 +45,6 @@ class NereidCRMTestCase(NereidTestCase):
         self.NereidWebsite = POOL.get('nereid.website')
         self.NereidPermission = POOL.get('nereid.permission')
         self.NereidUser = POOL.get('nereid.user')
-        self.UrlMap = POOL.get('nereid.url_map')
         self.Company = POOL.get('company.company')
         self.Employee = POOL.get('company.employee')
         self.Currency = POOL.get('currency.currency')
@@ -237,7 +238,6 @@ class NereidCRMTestCase(NereidTestCase):
             'employee': employee.id,
         })
 
-        url_map, = self.UrlMap.search([], limit=1)
         en_us, = self.Language.search([('code', '=', 'en_US')])
         locale_en, = self.Locale.create([{
             'code': 'en_US',
@@ -246,7 +246,6 @@ class NereidCRMTestCase(NereidTestCase):
         }])
         self.NereidWebsite.create([{
             'name': 'localhost',
-            'url_map': url_map,
             'company': self.company,
             'application_user': USER,
             'default_locale': locale_en.id,
