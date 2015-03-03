@@ -4,7 +4,7 @@
 
     Mini CRM based on Nereid and Sale Opprotunity
 
-    :copyright: (c) 2012-2014 by Openlabs Technologies & Consulting (P) Limited
+    :copyright: (c) 2012-2015 by Openlabs Technologies & Consulting (P) Limited
     :license: GPLv3, see LICENSE for more details.
 """
 import os
@@ -338,8 +338,8 @@ class SaleOpportunity:
             })
             flash('Lead has been updated.')
             return redirect(
-                url_for('sale.opportunity.admin_lead', active_id=self.id)
-                + "#tab-revenue"
+                url_for('sale.opportunity.admin_lead', active_id=self.id) +
+                "#tab-revenue"
             )
         return render_template(
             'crm/admin-lead.jinja', lead=self, employee=employee,
