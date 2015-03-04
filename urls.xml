@@ -70,35 +70,35 @@
             <field name="rule">/lead-&lt;int:active_id&gt;/-opportunity</field>
             <field name="endpoint">sale.opportunity.mark_opportunity</field>
             <field name="sequence" eval="120" />
-            <field name="http_method_get" eval="True"/>
+            <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_lead" model="nereid.url_rule">
             <field name="rule">/lead-&lt;int:active_id&gt;/-lead</field>
             <field name="endpoint">sale.opportunity.mark_lead</field>
             <field name="sequence" eval="120" />
-            <field name="http_method_get" eval="True"/>
+            <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_lost" model="nereid.url_rule">
             <field name="rule">/lead-&lt;int:active_id&gt;/-lost</field>
             <field name="endpoint">sale.opportunity.mark_lost</field>
             <field name="sequence" eval="120" />
-            <field name="http_method_get" eval="True"/>
+            <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_convert" model="nereid.url_rule">
             <field name="rule">/lead-&lt;int:active_id&gt;/-convert</field>
             <field name="endpoint">sale.opportunity.mark_converted</field>
             <field name="sequence" eval="120" />
-            <field name="http_method_get" eval="True"/>
+            <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
         <record id="sales_lead_cancel" model="nereid.url_rule">
             <field name="rule">/lead-&lt;int:active_id&gt;/-cancel</field>
             <field name="endpoint">sale.opportunity.mark_cancelled</field>
             <field name="sequence" eval="120" />
-            <field name="http_method_get" eval="True"/>
+            <field name="http_method_post" eval="True"/>
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
     </data>
