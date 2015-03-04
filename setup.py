@@ -2,9 +2,10 @@
 """
     setup
 
-    :copyright: (c) 2013-2014 by Openlabs Technologies & Consulting (P) Limited
+    :copyright: (c) 2013-2015 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
 """
+import time
 import sys
 import unittest
 import re
@@ -47,6 +48,36 @@ class SQLiteTest(Command):
         sys.exit(-1)
 
 
+class PostgresTest(Command):
+    """
+    Run the tests on Postgres.
+    """
+    description = "Run tests on Postgresql"
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        if self.distribution.tests_require:
+            self.distribution.fetch_build_eggs(self.distribution.tests_require)
+
+        os.environ['TRYTOND_DATABASE_URI'] = 'postgresql://'
+
+        os.environ['DB_NAME'] = 'test_' + str(int(time.time()))
+
+        from tests import suite
+        test_result = unittest.TextTestRunner(verbosity=3).run(suite())
+
+        if test_result.wasSuccessful():
+            sys.exit(0)
+        sys.exit(-1)
+
+
 config = ConfigParser.ConfigParser()
 config.readfp(open('tryton.cfg'))
 info = dict(config.items('tryton'))
@@ -80,17 +111,16 @@ setup(
     author=info.get('author', ''),
     author_email=info.get('email', ''),
     url=info.get('website', ''),
-    download_url="http://downloads.openlabs.co.in/"
-    + info.get('version', '0.0.1').rsplit('.', 1)[0] + '/',
     package_dir={'trytond.modules.nereid_crm': '.'},
     packages=[
         'trytond.modules.nereid_crm',
         'trytond.modules.nereid_crm.tests',
     ],
     package_data={
-        'trytond.modules.nereid_crm': info.get('xml', [])
-        + info.get('translation', []) + ['tryton.cfg']
-        + ['i18n/*.pot', 'i18n/pt_BR/LC_MESSAGES/*'],
+        'trytond.modules.nereid_crm':
+        info.get('xml', []) +
+        info.get('translation', []) + ['tryton.cfg'] +
+        ['i18n/*.pot', 'i18n/pt_BR/LC_MESSAGES/*'],
     },
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -117,5 +147,6 @@ setup(
     test_loader='trytond.test_loader:Loader',
     cmdclass={
         'test': SQLiteTest,
+        'test_on_postgres': PostgresTest,
     },
 )
