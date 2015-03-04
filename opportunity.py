@@ -350,8 +350,8 @@ class SaleOpportunity:
             })
             flash('Lead has been updated.')
             return redirect(
-                url_for('sale.opportunity.admin_lead', active_id=self.id)
-                + "#tab-revenue"
+                url_for('sale.opportunity.admin_lead', active_id=self.id) +
+                "#tab-revenue"
             )
         return render_template(
             'crm/admin-lead.jinja', lead=self, employee=employee,
@@ -486,7 +486,7 @@ class SaleOpportunity:
         return redirect(request.referrer + '#tab-comment')
 
     @login_required
-    @route('/lead-<int:active_id>/-opportunity')
+    @route('/lead-<int:active_id>/-opportunity', methods=["POST"])
     @permissions_required(['sales.admin'])
     def mark_opportunity(self):
         """
@@ -501,7 +501,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
-    @route('/lead-<int:active_id>/-lost')
+    @route('/lead-<int:active_id>/-lost', methods=["POST"])
     @permissions_required(['sales.admin'])
     def mark_lost(self):
         """
@@ -516,7 +516,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
-    @route('/lead-<int:active_id>/-lead')
+    @route('/lead-<int:active_id>/-lead', methods=["POST"])
     @permissions_required(['sales.admin'])
     def mark_lead(self):
         """
@@ -531,7 +531,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
-    @route('/lead-<int:active_id>/-convert')
+    @route('/lead-<int:active_id>/-convert', methods=["POST"])
     @permissions_required(['sales.admin'])
     def mark_converted(self):
         """
@@ -546,7 +546,7 @@ class SaleOpportunity:
         return redirect(request.referrer)
 
     @login_required
-    @route('/lead-<int:active_id>/-cancel')
+    @route('/lead-<int:active_id>/-cancel', methods=["POST"])
     @permissions_required(['sales.admin'])
     def mark_cancelled(self):
         """

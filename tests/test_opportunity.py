@@ -13,6 +13,16 @@ import unittest
 import datetime
 import simplejson as json
 from dateutil.relativedelta import relativedelta
+
+from mock import patch
+from trytond.config import config
+
+import trytond.tests.test_tryton
+from trytond.tests.test_tryton import POOL, DB_NAME, USER, CONTEXT
+from trytond.transaction import Transaction
+from trytond.tests.test_tryton import test_view, test_depends
+from nereid.testing import NereidTestCase
+
 DIR = os.path.abspath(
     os.path.normpath(
         os.path.join(
@@ -23,15 +33,7 @@ DIR = os.path.abspath(
 if os.path.isdir(DIR):
     sys.path.insert(0, os.path.dirname(DIR))
 
-from mock import patch
-from trytond.config import config
 config.set('email', 'from', 'test@openlabs.co.in')
-
-import trytond.tests.test_tryton
-from trytond.tests.test_tryton import POOL, DB_NAME, USER, CONTEXT
-from trytond.transaction import Transaction
-from trytond.tests.test_tryton import test_view, test_depends
-from nereid.testing import NereidTestCase
 
 
 class NereidCRMTestCase(NereidTestCase):
@@ -77,6 +79,16 @@ class NereidCRMTestCase(NereidTestCase):
     def tearDown(self):
         # Unpatch SMTP Lib
         self.smtplib_patcher.stop()
+
+    def _create_payment_term(self):
+        """Create a simple payment term with all advance
+        """
+        PaymentTerm = POOL.get('account.invoice.payment_term')
+
+        return PaymentTerm.create([{
+            'name': 'Direct',
+            'lines': [('create', [{'type': 'remainder'}])]
+        }])
 
     def _create_fiscal_year(self, date=None, company=None):
         """Creates a fiscal year and requried sequences
@@ -135,11 +147,11 @@ class NereidCRMTestCase(NereidTestCase):
         receivable, = Account.search([
             ('kind', '=', 'receivable'),
             ('company', '=', company),
-            ])
+        ])
         payable, = Account.search([
             ('kind', '=', 'payable'),
             ('company', '=', company),
-            ])
+        ])
         create_chart.properties.company = company
         create_chart.properties.account_receivable = receivable
         create_chart.properties.account_payable = payable
@@ -160,7 +172,7 @@ class NereidCRMTestCase(NereidTestCase):
         accounts = Account.search([
             ('kind', '=', kind),
             ('company', '=', company)
-            ], limit=1)
+        ], limit=1)
         if not accounts and not silent:
             raise Exception("Account not found")
         return accounts[0] if accounts else False
@@ -197,6 +209,7 @@ class NereidCRMTestCase(NereidTestCase):
 
         self._create_fiscal_year(company=self.company.id)
         self._create_coa_minimal(company=self.company.id)
+        self._create_payment_term()
 
         admin_party1, = self.Party.create([{
             'name': 'Crm Admin',
@@ -321,7 +334,7 @@ class NereidCRMTestCase(NereidTestCase):
         """
         Test new_opportunity web handler
         """
-        with Transaction().start(DB_NAME, USER, CONTEXT):
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
             self.setup_defaults()
             app = self.get_app()
 
@@ -343,7 +356,7 @@ class NereidCRMTestCase(NereidTestCase):
         '''
         Test revenue_opportunity web handler
         '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
             self.create_test_lead()
             app = self.get_app()
 
@@ -369,7 +382,7 @@ class NereidCRMTestCase(NereidTestCase):
         '''
         Test assign_lead
         '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
             self.create_test_lead()
             app = self.get_app()
 
@@ -411,7 +424,7 @@ class NereidCRMTestCase(NereidTestCase):
         '''
         Test all_leads
         '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
             self.create_test_lead()
             app = self.get_app()
 
@@ -430,6 +443,188 @@ class NereidCRMTestCase(NereidTestCase):
                 self.assertEqual(
                     response.data, u'1'
                 )
+
+    def test_0045_mark_lead_to_opportunity(self):
+        '''
+        Check if lead is marked as opportunity
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-opportunity' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'opportunity')
+
+                # Back to lead
+                response = c.post(
+                    '/lead-%d/-lead' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lead')
+
+    def test_0047_mark_lead_to_cancel(self):
+        '''
+        Check if lead is marked as cancelled
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-cancel' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'cancelled')
+
+                # Back to lead
+                response = c.post(
+                    '/lead-%d/-lead' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lead')
+
+    def test_0050_mark_lead_to_lost(self):
+        '''
+        Check if lead is marked as lost
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-lost' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lost')
+
+                # Back to lead
+                response = c.post(
+                    '/lead-%d/-lead' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lead')
+
+    def test_0053_mark_opportunity_to_converted(self):
+        '''
+        Check if opportunity is marked as converted
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            self.lead.state = 'opportunity'
+            self.lead.save()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-convert' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'converted')
+
+    def test_0055_mark_opportunity_to_lost(self):
+        '''
+        Check if opportunity is marked as lost
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            self.lead.state = 'opportunity'
+            self.lead.save()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-lost' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lost')
+
+                # Back to lead
+                response = c.post(
+                    '/lead-%d/-lead' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lead')
+
+    def test_0057_mark_opportunity_to_cancel(self):
+        '''
+        Check if opportunity is marked as cancelled
+        '''
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
+            self.create_test_lead()
+            app = self.get_app()
+
+            self.lead.state = 'opportunity'
+            self.lead.save()
+
+            with app.test_client() as c:
+                response = c.post(
+                    '/login',
+                    data={
+                        'email': 'admin@openlabs.co.in',
+                        'password': 'password',
+                    }
+                )
+                self.assertEqual(response.status_code, 302)
+                response = c.post(
+                    '/lead-%d/-cancel' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'cancelled')
+
+                # Back to lead
+                response = c.post(
+                    '/lead-%d/-lead' % self.lead,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(self.lead.state, 'lead')
 
 
 def suite():
