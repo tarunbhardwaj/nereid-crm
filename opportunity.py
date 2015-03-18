@@ -246,7 +246,7 @@ class SaleOpportunity:
                 'ip_address': request.remote_addr,
                 'detected_country': detected_country,
             }])
-            lead.send_notification_mail()
+            #lead.send_notification_mail()
             if request.is_xhr or request.is_json:
                 return jsonify({
                     "success": True,
